@@ -7,13 +7,18 @@ import ticketsRepository from '@/repositories/tickets-repository';
 
 async function getHotels(userId: number): Promise<Hotel[]> {
   const enrollment = await enrollmentRepository.findWithAddressByUserId(userId);
-  const ticket = await ticketsRepository.findTicketByEnrollmentId(enrollment.id);
-  const hotels: Hotel[] = await hotelsRepository.getAllHotels();
+  if (!enrollment) throw notFoundError();
 
-  if (!enrollment || !ticket || !hotels) throw notFoundError();
-  if (ticket.status !== 'PAID' || ticket.TicketType.isRemote == true || ticket.TicketType.includesHotel !== true) {
-    throw httpStatus.PAYMENT_REQUIRED;
-  }
+  const ticket = await ticketsRepository.findTicketByEnrollmentId(enrollment.id);
+  if (!ticket) throw notFoundError();
+
+  const hotels: Hotel[] = await hotelsRepository.getAllHotels();
+  if (!hotels) throw notFoundError();
+
+  if (ticket.status !== 'PAID') throw httpStatus.PAYMENT_REQUIRED;
+  if (ticket.TicketType.isRemote === true) throw httpStatus.PAYMENT_REQUIRED;
+  if (ticket.TicketType.includesHotel !== true) throw httpStatus.PAYMENT_REQUIRED;
+
   return hotels;
 }
 
